@@ -1,18 +1,19 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { GadgetStatusEnum, PrismaClient } from "@prisma/client";
 import { randomNameGenerator } from "../utils/randomNameGenerator";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-interface GadgetName {
-  name: string;
-}
+// interface GadgetName {
+//   name: string;
+// }
+//
+// interface ResponseData {
+//   namesWithChances: string[];
+// }
 
-interface ResponseData {
-  namesWithChances: string[];
-}
-
+//  GET: Retrieve a list of all gadgets
 router.get("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const gadgetNames = await prisma.gadgets.findMany({
@@ -41,7 +42,8 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-router.post("/", async (req, res): Promise<any> => {
+// POST: Add a new gadget to the inventory
+router.post("/", async (req: Request, res: Response): Promise<any> => {
   const newGadgetName = (await randomNameGenerator()) || "random-gadget";
   try {
     const newGadget = await prisma.gadgets.create({
@@ -59,6 +61,70 @@ router.post("/", async (req, res): Promise<any> => {
   } catch {
     console.error("Error creating gadget");
     return res.status(500).json({ error: "Failed to create gadget" });
+  }
+});
+
+// PATCH: Update an existing gadget's information.
+router.patch("/", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const body = await req.body;
+    const updatedGadget = await prisma.gadgets.update({
+      where: {
+        id: body.id,
+      },
+      data: {
+        name: body.name,
+        status: body.status,
+      },
+    });
+
+    return res.json({
+      id: updatedGadget.id,
+      name: updatedGadget.name,
+      status: updatedGadget.status,
+    });
+  } catch (error) {
+    console.error("Error updating gadget");
+    return res.status(500).json({ error: "Failed to update gadget" });
+  }
+});
+
+// DELETE: Remove a gadget from the inventory.
+router.delete("/", async (req: Request, res: Response): Promise<any> => {
+  const body = await req.body;
+  try {
+    const statusUpdate = GadgetStatusEnum.Decomissioned;
+    const decomissionedAtTime = new Date();
+
+    const updatedGadget = await prisma.gadgets.update({
+      where: {
+        id: body.id,
+      },
+      data: {
+        status: statusUpdate,
+        decomissionedAt: decomissionedAtTime,
+      },
+    });
+
+    return res.json({
+      id: updatedGadget.id,
+      name: updatedGadget.name,
+      status: updatedGadget.status,
+      message: "Gadget decomissioned",
+    });
+  } catch (error) {
+    console.error("Error decomissioning gadget:", error);
+
+    const findGadget = await prisma.gadgets.findFirst({
+      where: {
+        id: body.id,
+      },
+    });
+    if (!findGadget) {
+      return res.status(404).json({ error: "Gadget not found" });
+    }
+
+    return res.status(500).json({ error: "Failed to decomission gadget" });
   }
 });
 
