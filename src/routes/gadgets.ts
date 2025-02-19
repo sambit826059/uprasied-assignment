@@ -33,15 +33,21 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
     });
 
     // Transform each gadget's name to include a random success probability.
-    const namesWithChances: string[] = gadgets.map(({ name }) => {
-      // Capitalize the first letter of the gadget name.
-      const capitalizedName = name[0].toUpperCase() + name.slice(1);
-      // Generate a random success percentage.
-      const percentage = Math.floor(Math.random() * 100);
-      return (
-        "The " + capitalizedName + " - " + percentage + "% success probability"
-      );
-    });
+    const namesWithChances: string[] = gadgets.map(
+      ({ name }: { name: string }) => {
+        // Capitalize the first letter of the gadget name.
+        const capitalizedName = name[0].toUpperCase() + name.slice(1);
+        // Generate a random success percentage.
+        const percentage = Math.floor(Math.random() * 100);
+        return (
+          "The " +
+          capitalizedName +
+          " - " +
+          percentage +
+          "% success probability"
+        );
+      },
+    );
 
     return res.status(200).json({ namesWithChances });
   } catch (error) {
