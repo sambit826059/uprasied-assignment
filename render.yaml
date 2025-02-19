@@ -1,11 +1,20 @@
-services:
-  - type: web
-    name: upraised-assignment
-    runtime: node
-    buildCommand: pnpm install && pnpm build
-    startCommand: pnpm start:prod
-    envVars:
-      - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_Xi5gQ8NcmkCK@ep-bold-mouse-a87upr3w-pooler.eastus2.azure.neon.tech/neondb?sslmode=require
-      - key: JWT_SECRET
-        generateValue: true
+{
+  "services":
+    [
+      {
+        "type": "web",
+        "name": "upraised-assignment",
+        "runtime": "node",
+        "buildCommand": "pnpm install && pnpm build",
+        "startCommand": "pnpm start:prod",
+        "envVars":
+          [
+            {
+              "key": "DATABASE_URL",
+              "value": "postgresql://neondb_owner:npg_Xi5gQ8NcmkCK@ep-bold-mouse-a87upr3w-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
+            },
+            { "key": "JWT_SECRET", "generateValue": true },
+          ],
+      },
+    ],
+}
