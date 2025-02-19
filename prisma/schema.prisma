@@ -20,6 +20,7 @@ model Gadgets {
   createdAt       DateTime?         @default(now())
   updatedAt       DateTime?         @updatedAt
   decomissionedAt DateTime?
+  destroyedAt     DateTime?
 }
 
 enum GadgetStatusEnum {
