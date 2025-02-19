@@ -8,6 +8,36 @@ const prisma = new PrismaClient();
 
 router.get("/", async (req: Request, res: Response): Promise<any> => {
   try {
+    const statusFromQuery = req.query.status as string | undefined;
+    let statusFilter: GadgetStatusEnum | undefined = undefined;
+
+    if (statusFromQuery) {
+      if (
+        Object.values(GadgetStatusEnum).includes(
+          statusFromQuery as GadgetStatusEnum,
+        )
+      ) {
+        statusFilter = statusFromQuery as GadgetStatusEnum;
+      } else {
+        return res.status(400).json({ error: "Invalid flter value" });
+      }
+    }
+
+    const gadgets = await prisma.gadgets.findMany({
+      where: {
+        status: statusFilter,
+      },
+    });
+
+    return res.status(200).json(gadgets);
+  } catch (error) {
+    console.error("Error fetching the gadgets: ", error);
+    return res.status(500).json({ error: " Couldn't execute the request " });
+  }
+});
+
+router.get("/", async (req: Request, res: Response): Promise<any> => {
+  try {
     const gadgetNames = await prisma.gadgets.findMany({
       select: {
         name: true,
@@ -85,8 +115,8 @@ router.patch("/", async (req: Request, res: Response): Promise<any> => {
 router.delete("/", async (req: Request, res: Response): Promise<any> => {
   const body = await req.body;
   try {
-    const statusUpdate = GadgetStatusEnum.Decomissioned;
-    const decomissionedAtTime = new Date();
+    const statusUpdate = GadgetStatusEnum.Decommissioned;
+    const decommissionedAtTime = new Date();
 
     const updatedGadget = await prisma.gadgets.update({
       where: {
@@ -94,7 +124,7 @@ router.delete("/", async (req: Request, res: Response): Promise<any> => {
       },
       data: {
         status: statusUpdate,
-        decomissionedAt: decomissionedAtTime,
+        decommissionedAt: decommissionedAtTime,
       },
     });
 
@@ -102,10 +132,10 @@ router.delete("/", async (req: Request, res: Response): Promise<any> => {
       id: updatedGadget.id,
       name: updatedGadget.name,
       status: updatedGadget.status,
-      message: "Gadget decomissioned",
+      message: "Gadget decommissioned",
     });
   } catch (error) {
-    console.error("Error decomissioning gadget:", error);
+    console.error("Error decommissioning gadget:", error);
 
     const findGadget = await prisma.gadgets.findFirst({
       where: {
@@ -116,7 +146,7 @@ router.delete("/", async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: "Gadget not found" });
     }
 
-    return res.status(500).json({ error: "Failed to decomission gadget" });
+    return res.status(500).json({ error: "Failed to decommission gadget" });
   }
 });
 
