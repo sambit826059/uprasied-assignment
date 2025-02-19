@@ -1,19 +1,11 @@
-import express, { Request, Response } from "express";
+import express, { json, Request, Response } from "express";
 import { GadgetStatusEnum, PrismaClient } from "@prisma/client";
 import { randomNameGenerator } from "../utils/randomNameGenerator";
+import { codeGenerator } from "../utils/codeGenerator";
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// interface GadgetName {
-//   name: string;
-// }
-//
-// interface ResponseData {
-//   namesWithChances: string[];
-// }
-
-//  GET: Retrieve a list of all gadgets
 router.get("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const gadgetNames = await prisma.gadgets.findMany({
@@ -127,5 +119,59 @@ router.delete("/", async (req: Request, res: Response): Promise<any> => {
     return res.status(500).json({ error: "Failed to decomission gadget" });
   }
 });
+
+router.post(
+  "/:id/self-destruct",
+  async (req: Request, res: Response): Promise<any> => {
+    const { id } = req.params;
+
+    try {
+      const existingGadget = await prisma.gadgets.findUnique({
+        where: {
+          id: id,
+        },
+      });
+
+      if (!existingGadget) {
+        return res
+          .status(404)
+          .json({ error: "No matching gadget with the given id" });
+      }
+      // Code verification
+      const generateConfirmationCode = codeGenerator();
+      const userSubmittedConfirmationCode = generateConfirmationCode;
+
+      if (generateConfirmationCode !== userSubmittedConfirmationCode) {
+        return res.status(400).json({
+          error: "Confirmation code mismatch",
+        });
+      }
+
+      const destroyedAtTime = new Date();
+
+      const destoyedGadget = await prisma.gadgets.update({
+        where: {
+          id: id,
+        },
+        data: {
+          status: GadgetStatusEnum.Destroyed,
+          destroyedAt: destroyedAtTime,
+        },
+      });
+
+      return res.status(200).json({
+        message: `Sucessfully destroyed gadget ${id}`,
+        id: destoyedGadget.id,
+        name: destoyedGadget.name,
+        status: destoyedGadget.status,
+        confirmationCode: userSubmittedConfirmationCode,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: { error: "Gadget couldn't be destroyed" },
+      });
+    }
+  },
+);
 
 export default router;
