@@ -1,17 +1,19 @@
-import express, { json, Request, Response } from "express";
+import express, { Request, Response, Router } from "express";
 import { GadgetStatusEnum, PrismaClient } from "@prisma/client";
 import { randomNameGenerator } from "../utils/randomNameGenerator";
 import { codeGenerator } from "../utils/codeGenerator";
 
-const router = express.Router();
-const prisma = new PrismaClient();
+const router: Router = express.Router();
+const prisma: PrismaClient = new PrismaClient();
 
 router.get("/", async (req: Request, res: Response): Promise<any> => {
   try {
+    // Read the status query params if provided
     const statusFromQuery = req.query.status as string | undefined;
     let statusFilter: GadgetStatusEnum | undefined = undefined;
 
     if (statusFromQuery) {
+      // Validity of status from the given enum values
       if (
         Object.values(GadgetStatusEnum).includes(
           statusFromQuery as GadgetStatusEnum,
@@ -19,55 +21,39 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
       ) {
         statusFilter = statusFromQuery as GadgetStatusEnum;
       } else {
-        return res.status(400).json({ error: "Invalid flter value" });
+        return res.status(400).json({ error: "Invalid filter value" });
       }
     }
 
+    // Query the database for gadgets, optionally filtering by status.
+    // We select only the 'name' field since that's what we need for this response.
     const gadgets = await prisma.gadgets.findMany({
-      where: {
-        status: statusFilter,
-      },
+      where: { status: statusFilter },
+      select: { name: true },
     });
 
-    return res.status(200).json(gadgets);
-  } catch (error) {
-    console.error("Error fetching the gadgets: ", error);
-    return res.status(500).json({ error: " Couldn't execute the request " });
-  }
-});
-
-router.get("/", async (req: Request, res: Response): Promise<any> => {
-  try {
-    const gadgetNames = await prisma.gadgets.findMany({
-      select: {
-        name: true,
-      },
-    });
-
-    const namesWithChances: string[] = gadgetNames.map(({ name }) => {
+    // Transform each gadget's name to include a random success probability.
+    const namesWithChances: string[] = gadgets.map(({ name }) => {
+      // Capitalize the first letter of the gadget name.
       const capitalizedName = name[0].toUpperCase() + name.slice(1);
+      // Generate a random success percentage.
       const percentage = Math.floor(Math.random() * 100);
-
       return (
         "The " + capitalizedName + " - " + percentage + "% success probability"
       );
     });
 
-    return res.status(200).json({
-      namesWithChances,
-    });
-  } catch {
-    console.error("Error getting the gadget names");
-    res
-      .status(500)
-      .json({ error: "Failed to get the gadget names from the databse" });
+    return res.status(200).json({ namesWithChances });
+  } catch (error) {
+    console.error("Error fetching the gadgets: ", error);
+    return res.status(500).json({ error: "Couldn't execute the request" });
   }
 });
 
 // POST: Add a new gadget to the inventory
 router.post("/", async (req: Request, res: Response): Promise<any> => {
-  const newGadgetName = (await randomNameGenerator()) || "random-gadget";
   try {
+    const newGadgetName = randomNameGenerator() || "random-gadget";
     const newGadget = await prisma.gadgets.create({
       data: {
         name: newGadgetName,
@@ -156,6 +142,7 @@ router.post(
     const { id } = req.params;
 
     try {
+      // Checking for existing user
       const existingGadget = await prisma.gadgets.findUnique({
         where: {
           id: id,
@@ -167,6 +154,7 @@ router.post(
           .status(404)
           .json({ error: "No matching gadget with the given id" });
       }
+
       // Code verification
       const generateConfirmationCode = codeGenerator();
       const userSubmittedConfirmationCode = generateConfirmationCode;
