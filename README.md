@@ -42,7 +42,7 @@ API documentation is available at:
 1. Clone the repository
 
 ```bash
-git clone <https://github.com/sambit826059/uprasied-assignment/>
+git clone https://github.com/sambit826059/uprasied-assignment/
 ```
 
 2. Install dependencies
