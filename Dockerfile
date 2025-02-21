@@ -1,4 +1,4 @@
-# Build stage
+# Build Stage
 FROM node:20-alpine AS builder
 
 RUN npm install -g pnpm@10.4.0
@@ -24,7 +24,7 @@ COPY src ./src
 # Build the project
 RUN pnpm build
 
-# Production stage
+# Production Stage
 FROM node:20-alpine AS production
 
 WORKDIR /app
@@ -33,15 +33,18 @@ RUN npm install -g pnpm@10.4.0
 
 # Copy only production dependencies
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --frozen-lockfile --prod
+
+# Ensure Prisma Client exists
+RUN pnpm dlx prisma generate
 
 # Copy built files and necessary runtime dependencies
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/.pnpm/@prisma/client* ./node_modules/@prisma/client
 COPY --from=builder /app/prisma ./prisma
 
-# Copy environment variables
-# COPY .env .
+# Expose environment variables (do not copy .env)
+# Environment variables should be set in Render's settings
 
 EXPOSE 3000
 
