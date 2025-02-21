@@ -22,5 +22,7 @@ app.use("/api/v1", gadgetRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on port: ${PORT}`);
-  console.log("Swagger docs available at http://localhost:3000/api/v1/docs");
+  console.log(
+    "Swagger docs available at https://uprasied-assignment.onrender.com/api/v1/docs/",
+  );
 });
