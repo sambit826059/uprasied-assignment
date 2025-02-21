@@ -6,14 +6,41 @@ import { codeGenerator } from "../utils/codeGenerator";
 const router: Router = express.Router();
 const prisma: PrismaClient = new PrismaClient();
 
+/**
+ * @swagger
+ * /gadgets:
+ *   get:
+ *     summary: Get a list of gadgets with success probabilities
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Available, Deployed, Decommissioned, Destroyed]
+ *         description: Filter gadgets by status
+ *     responses:
+ *       200:
+ *         description: A list of gadget names with success probabilities
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 namesWithChances:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       400:
+ *         description: Invalid filter value
+ *       500:
+ *         description: Couldn't execute the request
+ */
 router.get("/", async (req: Request, res: Response): Promise<any> => {
   try {
-    // Read the status query params if provided
     const statusFromQuery = req.query.status as string | undefined;
     let statusFilter: GadgetStatusEnum | undefined = undefined;
 
     if (statusFromQuery) {
-      // Validity of status from the given enum values
       if (
         Object.values(GadgetStatusEnum).includes(
           statusFromQuery as GadgetStatusEnum,
@@ -25,19 +52,14 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // Query the database for gadgets, optionally filtering by status.
-    // We select only the 'name' field since that's what we need for this response.
     const gadgets = await prisma.gadgets.findMany({
       where: { status: statusFilter },
       select: { name: true },
     });
 
-    // Transform each gadget's name to include a random success probability.
     const namesWithChances: string[] = gadgets.map(
       ({ name }: { name: string }) => {
-        // Capitalize the first letter of the gadget name.
         const capitalizedName = name[0].toUpperCase() + name.slice(1);
-        // Generate a random success percentage.
         const percentage = Math.floor(Math.random() * 100);
         return (
           "The " +
@@ -56,7 +78,31 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// POST: Add a new gadget to the inventory
+/**
+ * @swagger
+ * /gadgets:
+ *   post:
+ *     summary: Add a new gadget to the inventory
+ *     responses:
+ *       201:
+ *         description: Gadget created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         description: Failed to create gadget
+ */
 router.post("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const newGadgetName = randomNameGenerator() || "random-gadget";
@@ -78,7 +124,48 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// PATCH: Update an existing gadget's information.
+/**
+ * @swagger
+ * /gadgets:
+ *   patch:
+ *     summary: Update an existing gadget's information
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 description: The gadget ID
+ *               name:
+ *                 type: string
+ *                 description: The new name for the gadget
+ *               status:
+ *                 type: string
+ *                 enum: [Available, Decommissioned, UnderMaintenance]
+ *                 description: The new status for the gadget
+ *     responses:
+ *       200:
+ *         description: Gadget updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *       500:
+ *         description: Failed to update gadget
+ */
+
 router.patch("/", async (req: Request, res: Response): Promise<any> => {
   try {
     const body = await req.body;
@@ -103,7 +190,45 @@ router.patch("/", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// DELETE: Remove a gadget from the inventory.
+/**
+ * @swagger
+ * /gadgets:
+ *   delete:
+ *     summary: Remove a gadget from the inventory
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 description: The ID of the gadget to decommission
+ *     responses:
+ *       200:
+ *         description: Gadget decommissioned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Gadget not found
+ *       500:
+ *         description: Failed to decommission gadget
+ */
+
 router.delete("/", async (req: Request, res: Response): Promise<any> => {
   const body = await req.body;
   try {
@@ -141,61 +266,5 @@ router.delete("/", async (req: Request, res: Response): Promise<any> => {
     return res.status(500).json({ error: "Failed to decommission gadget" });
   }
 });
-
-router.post(
-  "/:id/self-destruct",
-  async (req: Request, res: Response): Promise<any> => {
-    const { id } = req.params;
-
-    try {
-      // Checking for existing user
-      const existingGadget = await prisma.gadgets.findUnique({
-        where: {
-          id: id,
-        },
-      });
-
-      if (!existingGadget) {
-        return res
-          .status(404)
-          .json({ error: "No matching gadget with the given id" });
-      }
-
-      // Code verification
-      const generateConfirmationCode = codeGenerator();
-      const userSubmittedConfirmationCode = generateConfirmationCode;
-
-      if (generateConfirmationCode !== userSubmittedConfirmationCode) {
-        return res.status(400).json({
-          error: "Confirmation code mismatch",
-        });
-      }
-
-      const destroyedAtTime = new Date();
-
-      const destoyedGadget = await prisma.gadgets.update({
-        where: {
-          id: id,
-        },
-        data: {
-          status: GadgetStatusEnum.Destroyed,
-          destroyedAt: destroyedAtTime,
-        },
-      });
-
-      return res.status(200).json({
-        message: `Sucessfully destroyed gadget ${id}`,
-        id: destoyedGadget.id,
-        name: destoyedGadget.name,
-        status: destoyedGadget.status,
-        confirmationCode: userSubmittedConfirmationCode,
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: { error: "Gadget couldn't be destroyed" },
-      });
-    }
-  },
-);
 
 export default router;

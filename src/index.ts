@@ -2,10 +2,13 @@ import express, { Request, Response, Application } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import gadgetRouter from "./routes";
+import { setupSwagger } from "./swagger";
 
 dotenv.config();
 const app: Application = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+
+setupSwagger(app);
 
 // middlewares
 app.use(cors());
@@ -15,8 +18,9 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Server healthy");
 });
 
-app.use("/api/v1/", gadgetRouter);
+app.use("/api/v1", gadgetRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on port: ${PORT}`);
+  console.log("Swagger docs available at http://localhost:3000/api/v1/docs");
 });
