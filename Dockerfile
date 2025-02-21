@@ -41,7 +41,7 @@ COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/clie
 COPY --from=builder /app/prisma ./prisma
 
 # Copy environment variables
-COPY .env .
+# COPY .env .
 
 EXPOSE 3000
 
