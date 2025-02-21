@@ -20,16 +20,15 @@ RUN pnpm build
 FROM node:20-alpine AS production
 WORKDIR /app
 RUN npm install -g pnpm@10.4.0
-# Copy only production dependencies
+# Copy package files and prisma schema
 COPY package.json pnpm-lock.yaml ./
-# Copy prisma schema first
 COPY --from=builder /app/prisma ./prisma
-# Copy built files
-COPY --from=builder /app/dist ./dist
-# Copy the Prisma client from builder
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Install production dependencies
 RUN pnpm install --frozen-lockfile --prod
+# Generate Prisma client in production environment
+RUN pnpm dlx prisma generate
+# Copy built files
+COPY --from=builder /app/dist ./dist
 # Expose port
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
